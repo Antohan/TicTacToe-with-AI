@@ -1,31 +1,34 @@
+import abc
 import random
 
 
-class TicTacToe:
-    def __init__(self, first_player, second_player):
-        self.first_player = self.user if first_player == "user" else self.computer
-        self.second_player = self.user if second_player == "user" else self.computer
-        self.board = [
-            [" ", " ", " "],
-            [" ", " ", " "],
-            [" ", " ", " "],
+class Player(abc.ABC):
+    def __init__(self, sign: str):
+        self.sign = sign
+
+    def check_win(self, board):
+        winning_combos = [
+            [board[0][0], board[0][1], board[0][2]],
+            [board[1][0], board[1][1], board[1][2]],
+            [board[2][0], board[2][1], board[2][2]],
+            [board[0][0], board[1][0], board[2][0]],
+            [board[0][1], board[1][1], board[2][1]],
+            [board[0][2], board[1][2], board[2][2]],
+            [board[0][0], board[1][1], board[2][2]],
+            [board[2][0], board[1][1], board[0][2]],
         ]
-        self.current_player = "X"
 
-    def computer(self):
-        """Bot moves"""
+        return any(
+            all(self.sign == c for c in combo) for combo in [_ for _ in winning_combos]
+        )
 
-        while True:
-            row, col = random.randint(1, 3), random.randint(1, 3)
+    @abc.abstractmethod
+    def make_move(self, board):
+        pass
 
-            if self.board[row - 1][col - 1] == " ":
-                self.board[row - 1][col - 1] = self.current_player
-                print("Making move level \"easy\"")
-                break
 
-    def user(self):
-        """Player moves"""
-
+class User(Player):
+    def make_move(self, board):
         while True:
             coords = input("Enter the coordinates:").split()
 
@@ -39,49 +42,69 @@ class TicTacToe:
                 print("Coordinates should be from 1 to 3!")
                 continue
 
-            if self.board[row - 1][col - 1] != " ":
+            if board[row - 1][col - 1] != " ":
                 print("This cell is occupied! Choose another one!")
                 continue
 
-            self.board[row - 1][col - 1] = self.current_player
+            board[row - 1][col - 1] = self.sign
             break
+        return board
+
+
+class Bot(Player):
+    def __init__(self, sign, level):
+        super().__init__(sign)
+        self.level = level
+
+    def __str__(self):
+        return self.level
+
+    def make_move(self, board):
+        while True:
+            row, col = random.randint(1, 3), random.randint(1, 3)
+
+            if board[row - 1][col - 1] == " ":
+                board[row - 1][col - 1] = self.sign
+                print(f"Making move level \"{self}\"")
+                break
+        return board
+
+
+class TicTacToe:
+    def __init__(self, x_player, o_player):
+        if x_player == "user":
+            self.x_player = User("X")
+        else:
+            self.x_player = Bot("X", x_player)
+
+        if o_player == "user":
+            self.o_player = User("O")
+        else:
+            self.o_player = Bot("O", o_player)
+
+        self.board = [
+            [" ", " ", " "],
+            [" ", " ", " "],
+            [" ", " ", " "],
+        ]
+        self.current_player = "X"
+
+    def __str__(self):
+        result = "---------\n"
+        result += "\n".join([f"| {' '.join(row)} |" for row in self.board[::-1]])
+        result += "\n---------"
+
+        return result
 
     def flat_board(self):
         """Return flat game field"""
-
         return [cell for row in self.board for cell in row]
-
-    def print_board(self):
-        """Print board state"""
-
-        print("---------")
-        for row in range(len(self.board)):
-            print("|", *self.board[::-1][row], "|")
-        print("---------")
-
-    def check_win(self, player: str):
-        """Check winn"""
-
-        winning_combos = [
-            [self.board[0][0], self.board[0][1], self.board[0][2]],
-            [self.board[1][0], self.board[1][1], self.board[1][2]],
-            [self.board[2][0], self.board[2][1], self.board[2][2]],
-            [self.board[0][0], self.board[1][0], self.board[2][0]],
-            [self.board[0][1], self.board[1][1], self.board[2][1]],
-            [self.board[0][2], self.board[1][2], self.board[2][2]],
-            [self.board[0][0], self.board[1][1], self.board[2][2]],
-            [self.board[2][0], self.board[1][1], self.board[0][2]],
-        ]
-
-        # Check that at least one combo contains the same symbols (X or O)
-        return any(all(player == c for c in combo) for combo in [_ for _ in winning_combos])
 
     def game_over(self):
         """Return string with game result"""
-
-        if self.check_win("O"):
+        if self.o_player.check_win(self.board):
             return "O wins"
-        elif self.check_win("X"):
+        elif self.x_player.check_win(self.board):
             return "X wins"
         elif " " in self.flat_board():
             return "Continue"
@@ -90,14 +113,13 @@ class TicTacToe:
 
     def start(self):
         """Start game"""
-
         while True:
-            self.print_board()
+            print(self)
 
             if self.current_player == "X":
-                self.first_player()
+                self.x_player.make_move(self.board)
             else:
-                self.second_player()
+                self.o_player.make_move(self.board)
 
             self.current_player = "O" if self.current_player == "X" else "X"
             result = self.game_over()
@@ -105,7 +127,7 @@ class TicTacToe:
             if result == "Continue":
                 continue
             else:
-                self.print_board()
+                print(self)
                 print(result)
                 break
 
