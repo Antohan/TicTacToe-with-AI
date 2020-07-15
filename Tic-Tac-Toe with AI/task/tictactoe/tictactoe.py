@@ -6,24 +6,30 @@ class Player(abc.ABC):
     def __init__(self, sign: str):
         self.sign = sign
 
-    def check_win(self, board):
-        winning_combos = [
-            [board[0][0], board[0][1], board[0][2]],
-            [board[1][0], board[1][1], board[1][2]],
-            [board[2][0], board[2][1], board[2][2]],
-            [board[0][0], board[1][0], board[2][0]],
-            [board[0][1], board[1][1], board[2][1]],
-            [board[0][2], board[1][2], board[2][2]],
-            [board[0][0], board[1][1], board[2][2]],
-            [board[2][0], board[1][1], board[0][2]],
+    @staticmethod
+    def get_winning_combos(board):
+        return [
+            {(0, 0): board[0][0], (0, 1): board[0][1], (0, 2): board[0][2]},
+            {(1, 0): board[1][0], (1, 1): board[1][1], (1, 2): board[1][2]},
+            {(2, 0): board[2][0], (2, 1): board[2][1], (2, 2): board[2][2]},
+            {(0, 0): board[0][0], (1, 0): board[1][0], (2, 0): board[2][0]},
+            {(0, 1): board[0][1], (1, 1): board[1][1], (2, 1): board[2][1]},
+            {(0, 2): board[0][2], (1, 2): board[1][2], (2, 2): board[2][2]},
+            {(0, 0): board[0][0], (1, 1): board[1][1], (2, 2): board[2][2]},
+            {(2, 0): board[2][0], (1, 1): board[1][1], (0, 2): board[0][2]},
         ]
 
+    def check_win(self, board):
+        winning_combos = self.get_winning_combos(board)
+        combo_values = [list(c.values()) for c in [combo for combo in winning_combos]]
+
         return any(
-            all(self.sign == c for c in combo) for combo in [_ for _ in winning_combos]
+            all(self.sign == c for c in combo) for combo in [_ for _ in combo_values]
         )
 
     @abc.abstractmethod
     def make_move(self, board):
+        """Make move"""
         pass
 
 
@@ -55,11 +61,13 @@ class Bot(Player):
     def __init__(self, sign, level):
         super().__init__(sign)
         self.level = level
+        self.opponent_sign = 'X' if self.sign == "O" else "X"
 
     def __str__(self):
         return self.level
 
-    def make_move(self, board):
+    def random_move(self, board):
+        """Get random coordinates."""
         while True:
             row, col = random.randint(1, 3), random.randint(1, 3)
 
@@ -68,6 +76,30 @@ class Bot(Player):
                 print(f"Making move level \"{self}\"")
                 break
         return board
+
+    def make_move(self, board):
+        if self.level == "easy":
+            return self.random_move(board)
+
+        if self.level == "medium":
+            winning_combos = self.get_winning_combos(board)
+
+            # Check that it can win in one move
+            for i in range(len(winning_combos)):
+                if len([sign for sign in list(winning_combos[i].values()) if sign == self.sign]) == 2:
+                    for key, value in winning_combos[i].items():
+                        if value == " ":
+                            board[key[0]][key[1]] = self.sign
+                            return board
+            # Block the opponent to win
+            for i in range(len(winning_combos)):
+                if len([sign for sign in list(winning_combos[i].values()) if sign == self.opponent_sign]) == 2:
+                    for key, value in winning_combos[i].items():
+                        if value == " ":
+                            board[key[0]][key[1]] = self.sign
+                            return board
+
+            return self.random_move(board)
 
 
 class TicTacToe:
