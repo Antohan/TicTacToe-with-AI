@@ -1,5 +1,6 @@
 import abc
 import random
+import sys
 
 
 EMPTY_CELL = " "
@@ -8,6 +9,7 @@ EMPTY_CELL = " "
 class Player(abc.ABC):
     def __init__(self, sign: str):
         self.sign = sign
+        self.opponent_sign = 'X' if self.sign == "O" else "X"
 
     @staticmethod
     def get_winning_combos(board):
@@ -22,13 +24,20 @@ class Player(abc.ABC):
             {(2, 0): board[2][0], (1, 1): board[1][1], (0, 2): board[0][2]},
         ]
 
-    def check_win(self, board):
+    def check_win(self, board, sign: str):
         winning_combos = self.get_winning_combos(board)
         combo_values = [list(c.values()) for c in [combo for combo in winning_combos]]
 
         return any(
-            all(self.sign == c for c in combo) for combo in [_ for _ in combo_values]
+            all(sign == c for c in combo) for combo in [_ for _ in combo_values]
         )
+
+    @staticmethod
+    def check_draw(board):
+        count = 0
+        for y in range(3):
+            count += 1 if EMPTY_CELL in board[y] else 0
+        return count == 0
 
     @abc.abstractmethod
     def make_move(self, board):
@@ -64,7 +73,6 @@ class Bot(Player):
     def __init__(self, sign, level):
         super().__init__(sign)
         self.level = level
-        self.opponent_sign = 'X' if self.sign == "O" else "X"
 
     def __str__(self):
         return self.level
@@ -79,6 +87,33 @@ class Bot(Player):
                 print(f"Making move level \"{self}\"")
                 break
         return board
+
+    def minimax(self, board, depth, is_self_turn):
+        if self.check_win(board, self.sign):
+            return 100
+        if self.check_win(board, self.opponent_sign):
+            return -100
+        if self.check_draw(board):
+            0
+
+        if is_self_turn:
+            best_score = -sys.maxsize
+            for row in range(3):
+                for col in range(3):
+                    if board[row][col] == EMPTY_CELL:
+                        board[row][col] = self.sign
+                        score = self.minimax(board, depth + 1, False)
+                        best_score = max(best_score, score)
+        else:
+            best_score = sys.maxsize
+            for row in range(3):
+                for col in range(3):
+                    if board[row][col] == EMPTY_CELL:
+                        board[row][col] = self.opponent_sign
+                        score = self.minimax(board, depth + 1, True)
+                        best_score = max(best_score, score)
+
+        return best_score
 
     def make_move(self, board):
         if self.level == "easy":
@@ -105,6 +140,23 @@ class Bot(Player):
                             return board
 
             return self.random_move(board)
+
+        if self.level == "hard":
+            # Use minimax algorithm
+            best_score = -sys.maxsize
+            copy_board = [board[i].copy() for i in range(3)]
+
+            for row in range(3):
+                for col in range(3):
+                    if copy_board[row][col] == EMPTY_CELL:
+                        copy_board[row][col] = self.sign
+                        score = self.minimax(copy_board, 0, False)
+                        copy_board[row][col] = EMPTY_CELL
+                        if score > best_score:
+                            best_score = score
+                            board[row][col] = self.sign
+            print("Making move level \"hard\"")
+            return board
 
 
 class TicTacToe:
@@ -138,9 +190,9 @@ class TicTacToe:
 
     def game_over(self):
         """Return string with game result"""
-        if self.o_player.check_win(self.board):
+        if self.o_player.check_win(self.board, "O"):
             return "O wins"
-        elif self.x_player.check_win(self.board):
+        elif self.x_player.check_win(self.board, "X"):
             return "X wins"
         elif EMPTY_CELL in self.flat_board():
             return "Continue"
