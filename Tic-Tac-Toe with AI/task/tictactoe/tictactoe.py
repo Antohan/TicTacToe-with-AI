@@ -2,6 +2,9 @@ import abc
 import random
 
 
+EMPTY_CELL = " "
+
+
 class Player(abc.ABC):
     def __init__(self, sign: str):
         self.sign = sign
@@ -48,7 +51,7 @@ class User(Player):
                 print("Coordinates should be from 1 to 3!")
                 continue
 
-            if board[row - 1][col - 1] != " ":
+            if board[row - 1][col - 1] != EMPTY_CELL:
                 print("This cell is occupied! Choose another one!")
                 continue
 
@@ -69,10 +72,10 @@ class Bot(Player):
     def random_move(self, board):
         """Get random coordinates."""
         while True:
-            row, col = random.randint(1, 3), random.randint(1, 3)
+            row, col = random.randint(0, 2), random.randint(0, 2)
 
-            if board[row - 1][col - 1] == " ":
-                board[row - 1][col - 1] = self.sign
+            if board[row][col] == EMPTY_CELL:
+                board[row][col] = self.sign
                 print(f"Making move level \"{self}\"")
                 break
         return board
@@ -88,15 +91,17 @@ class Bot(Player):
             for i in range(len(winning_combos)):
                 if len([sign for sign in list(winning_combos[i].values()) if sign == self.sign]) == 2:
                     for key, value in winning_combos[i].items():
-                        if value == " ":
+                        if value == EMPTY_CELL:
                             board[key[0]][key[1]] = self.sign
+                            print(f"Making move level \"{self}\"")
                             return board
             # Block the opponent to win
             for i in range(len(winning_combos)):
                 if len([sign for sign in list(winning_combos[i].values()) if sign == self.opponent_sign]) == 2:
                     for key, value in winning_combos[i].items():
-                        if value == " ":
+                        if value == EMPTY_CELL:
                             board[key[0]][key[1]] = self.sign
+                            print(f"Making move level \"{self}\"")
                             return board
 
             return self.random_move(board)
@@ -114,10 +119,9 @@ class TicTacToe:
         else:
             self.o_player = Bot("O", o_player)
 
+        # Empty board 3x3
         self.board = [
-            [" ", " ", " "],
-            [" ", " ", " "],
-            [" ", " ", " "],
+            [EMPTY_CELL for _ in range(3)] for _ in range(3)
         ]
         self.current_player = "X"
 
@@ -138,7 +142,7 @@ class TicTacToe:
             return "O wins"
         elif self.x_player.check_win(self.board):
             return "X wins"
-        elif " " in self.flat_board():
+        elif EMPTY_CELL in self.flat_board():
             return "Continue"
         else:
             return "Draw"
